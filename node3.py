@@ -11,13 +11,34 @@ dt = DistanceTable()
 # modify this statement for different node
 edges = [7, 999, 2, 0]
 node_id = 3
+neighbor_id = [i for i in range(4) if edges[i]>0 and edges[i]<999]
 
 def rtinit3():
-    pass
+    for i in range(4):
+        if i == node_id:
+            dt.costs[i] = edges
+        else:
+            dt.costs[i] = [999, 999, 999, 999]   
+    for i in neighbor_id:
+        packet = Rtpkt(node_id, i, dt.costs[node_id])
+        tolayer2(packet)
 
 
 def rtupdate3(rcvdpkt):
-    pass
+    src_id, dst_id, src_dv = rcvdpkt.sourceid, rcvdpkt.destid, rcvdpkt.mincost
+    if src_id not in neighbor_id:
+        print("WARNING: illegal src id in received packet, ignoring packet!\n")
+        return
+    if dst_id != node_id:
+        print("WARNING: illegal dst id in received packet, ignoring packet!\n")
+        return
+    dt.costs[src_id] = src_dv
+    node_dv = [min(dt.costs[node_id][j], src_dv[j]+edges[src_id]) for j in range(4)]
+    if node_dv != dt.costs[node_id]:
+          dt.costs[node_id] = node_dv
+          for i in neighbor_id:
+                packet = Rtpkt(node_id, i, node_dv)
+                tolayer2(packet)
 
 
 def printdt3(dtptr):
