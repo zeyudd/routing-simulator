@@ -35,10 +35,10 @@ def rtupdate2(rcvdpkt):
     dt.costs[src_id] = src_dv
     node_dv = [min(dt.costs[node_id][j], src_dv[j]+edges[src_id]) for j in range(4)]
     if node_dv != dt.costs[node_id]:
-          dt.costs[node_id] = node_dv
-          for i in neighbor_id:
-                packet = Rtpkt(node_id, i, node_dv)
-                tolayer2(packet)
+        dt.costs[node_id] = node_dv
+        for i in neighbor_id:
+            packet = Rtpkt(node_id, i, node_dv)
+            tolayer2(packet)
     
 
 def printdt2(dtptr):
