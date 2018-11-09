@@ -10,35 +10,60 @@ dt = DistanceTable()
 # modify this statement for different node
 edges = [0, 1, 3, 7]
 node_id = 0
+node_dv = edges
 neighbor_id = [i for i in range(4) if edges[i]>0 and edges[i]<999]
 
 def rtinit0():
     for i in range(4):
-        if i == node_id:
-            dt.costs[i] = edges
-        else:
-            dt.costs[i] = [999, 999, 999, 999]   
+        for j in range(4):
+            if j == node_id:
+                dt.costs[i][j] = edges[i]
+            else:
+                dt.costs[i][j] = 999       
     for i in neighbor_id:
-        packet = Rtpkt(node_id, i, dt.costs[node_id])
+        packet = Rtpkt(node_id, i, node_dv)
         tolayer2(packet)
+    print("rt0: invoking rtinit0")
+    print("rt0: initializing distance tabel to")
+    printdt0(dt)
+    print("rt0: packets with dv %s sent to neighbors\n" % node_dv)
 
 
 def rtupdate0(rcvdpkt):
+    global node_dv
+    print("rt0: invoking rtupdate0")
     src_id, dst_id, src_dv = rcvdpkt.sourceid, rcvdpkt.destid, rcvdpkt.mincost
+    print("rt0: received packet from rt%d with dv %s " % (src_id, src_dv))
     if src_id not in neighbor_id:
         print("WARNING: illegal src id in received packet, ignoring packet!\n")
         return
     if dst_id != node_id:
         print("WARNING: illegal dst id in received packet, ignoring packet!\n")
         return
-    dt.costs[src_id] = src_dv
-    node_dv = [min(dt.costs[node_id][j], src_dv[j]+edges[src_id]) for j in range(4)]
-    if node_dv != dt.costs[node_id]:
-        dt.costs[node_id] = node_dv
+    dt_update = False    
+    for i in range(4):
+        cost = src_dv[i] + edges[src_id]
+        if cost > 999:
+            cost = 999
+        if dt.costs[i][src_id] != cost:
+            dt_update = True
+            dt.costs[i][src_id] = cost
+    if(dt_update):
+        print("rt0: distance table changed to")
+        printdt0(dt)
+    else:
+        print("rt0: distance table not changed")
+    new_dv = [min(node_dv[i], dt.costs[i][src_id]) for i in range(4)]    
+    if node_dv != new_dv:
+        node_dv = new_dv
         for i in neighbor_id:
             packet = Rtpkt(node_id, i, node_dv)
             tolayer2(packet)
-
+        print("rt0: distance vector changed to %s" % node_dv)
+        print("rt0: packets with dv %s sent to neighbors\n" % node_dv)
+    else:
+        print("rt0: distance vector not changed")
+        print("rt0: no packets sent\n")
 
 def printdt0(dtptr):
     print("                via     \n")
@@ -58,4 +83,25 @@ def linkhandler0(linkid, newcost):
     to use this routine, you'll need to change the value of the LINKCHANGE
     constant definition in prog3.c from 0 to 1
     '''
-    pass
+    global edges, node_dv, dt
+    print("rt0: invoking linkhandler0")
+    print("rt0: link between rt0 and rt%d changed from %d to %d" %
+            (linkid, edges[linkid], newcost))
+    for i in range(4):
+        dt.costs[i][linkid] = dt.costs[i][linkid] - edges[linkid] + newcost
+    dt.costs[linkid][node_id] = newcost
+    print("rt0: distance table changed to")
+    printdt0(dt)
+    edges[linkid] = newcost
+    new_dv = [min([dt.costs[i][j] for j in range(4)]) for i in range(4)]    
+    if node_dv != new_dv:
+        node_dv = new_dv
+        for i in neighbor_id:
+            packet = Rtpkt(node_id, i, node_dv)
+            tolayer2(packet)
+        print("rt0: distance vector changed to %s" % node_dv)
+        print("rt0: packets with dv %s sent to neighbors\n" % node_dv)
+    else:
+        print("rt0: distance vector not changed")
+        print("rt0: no packets sent\n")
+
